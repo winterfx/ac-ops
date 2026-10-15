@@ -31,7 +31,7 @@ ACLI = os.environ.get("ACOPS_ACLI", os.path.join(HERE, "acli"))
 LOCAL_TZ = dt.timezone(dt.timedelta(hours=8))  # Asia/Shanghai has no DST.
 
 MAX_FAILED_RUN_DETAILS = 60
-MAX_SANDBOX_HISTORIES = 150
+MAX_SANDBOX_HISTORIES = 400
 TEXT_TAIL = 800
 STACK_LINES = 15
 
@@ -366,6 +366,8 @@ def main():
             "sandboxes_by_status": dict(collections.Counter(s.get("status") for s in sandboxes)),
             "sandboxes_with_failed_steps": sum(1 for r in sandbox_reports if r.get("failed_cells")),
             "sandbox_histories_read": min(len(sandboxes), MAX_SANDBOX_HISTORIES),
+            # Oldest first beyond the cap; their failed steps are not in this digest.
+            "sandbox_histories_skipped": max(len(sandboxes) - MAX_SANDBOX_HISTORIES, 0),
             "scheduler_runs": dict(collections.Counter(r.get("status") for r in scheduler_runs)),
         },
         "error_signatures": signatures,

@@ -35,8 +35,9 @@ acli llm ls                                   # LLM 连接和探测结果（daem
    **找前一天的报告用于对比：** 前一天的报告是本 agent 前一次成功运行的最终回答。
    ```bash
    acli --json -p platform-ops run ls --agent platform-analyst --status succeeded --limit 10   # 最新的在前
-   acli --json -p platform-ops inspect run <run-id>                                           # .output 就是报告正文
+   acli --json -p platform-ops inspect run <run-id> | jq -r '.result_json | fromjson | .finalText'   # 报告正文
    ```
+   注意：`.output` 是那次运行的完整执行记录（十几万字符），不是报告；报告在 `result_json` 的 `finalText` 字段里。
    取输出第一行标题是"agent-compose 健康报告 <前一天日期>"的那一次（不是就往前找）；找不到就在报告里写"无前一天报告可对比"。
 2. **看采集本身。** `collection.errors` 非空、`collection.slowest_call` 超过 30 秒，说明 API 慢或出错，这本身就是平台问题，写进报告。
 3. **归类失败。** 逐个看 `error_signatures`（已按出现次数排序），结合 `failed_runs`、`failing_sandboxes`、`failed_scheduler_runs` 里的例子，给每类失败归到下表的一个类别。必要时用 `acli` 深挖一两个例子，不要逐个全查。
@@ -89,7 +90,7 @@ acli llm ls                                   # LLM 连接和探测结果（daem
 <1~3 条，每条都要能对应到上面的证据>
 
 ## 数据说明
-<采集耗时、读取的 sandbox history 数量、采集错误；源码同步到的 origin/main 提交和日期（`acsrc log -1 --format="%h %cd" --date=short origin/main`），"上游是否已修复"的结论只截至这一天；本报告的局限>
+<采集耗时、读取的 sandbox history 数量和因上限跳过的数量（`totals.sandbox_histories_skipped`，非零时要写明这些 sandbox 的失败没有统计在内）、采集错误；源码同步到的 origin/main 提交和日期（`acsrc log -1 --format="%h %cd" --date=short origin/main`），"上游是否已修复"的结论只截至这一天；本报告的局限>
 ```
 
 ## 规则
