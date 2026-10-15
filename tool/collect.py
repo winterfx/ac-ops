@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect a compact digest of agent-compose activity for one time window.
 
-The digest is what the nightly agent reads instead of paging through the
+The digest is what the health report is written from, instead of paging through the
 daemon itself: run, sandbox, and scheduler activity per agent, the details of
 every failure, and failures grouped by a normalized error signature.
 
@@ -27,7 +27,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ACLI = os.environ.get("ACNR_ACLI", os.path.join(HERE, "acli"))
+ACLI = os.environ.get("ACOPS_ACLI", os.path.join(HERE, "acli"))
 LOCAL_TZ = dt.timezone(dt.timedelta(hours=8))  # Asia/Shanghai has no DST.
 
 MAX_FAILED_RUN_DETAILS = 60
@@ -214,12 +214,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--date", help="local calendar day (Asia/Shanghai), default: yesterday")
     parser.add_argument("--since", help="relative window ending now, e.g. 6h or 2d")
-    parser.add_argument("--out", help="digest path, default: /reports/data/<date>.json")
-    parser.add_argument("--exclude-project", action="append", default=[os.environ.get("ACNR_SELF_PROJECT", "ac-nightly-report")], help="project to leave out (repeatable)")
+    parser.add_argument("--out", help="digest path, default: $ACOPS_OUTPUTS/health-report/data/<date>.json")
+    parser.add_argument("--exclude-project", action="append", default=[os.environ.get("ACOPS_SELF_PROJECT", "ac-ops")], help="project to leave out (repeatable)")
     args = parser.parse_args()
 
     start, end, label = window_from_args(args)
-    out = args.out or os.path.join(os.environ.get("ACNR_REPORTS", "/reports"), "data", f"{label}.json")
+    out = args.out or os.path.join(os.environ.get("ACOPS_OUTPUTS", "/outputs"), "health-report", "data", f"{label}.json")
     excluded = set(args.exclude_project)
 
     status = attempt("status", lambda: acli("status"), {})

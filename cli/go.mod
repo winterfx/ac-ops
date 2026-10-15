@@ -1,4 +1,4 @@
-module github.com/winterfx/ac-nightly-report/cli
+module github.com/winterfx/ac-ops/cli
 
 go 1.25.0
 

@@ -10,4 +10,4 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-exec git -c safe.directory='*' -C "${ACNR_SRC:-$here/../src/agent-compose}" "$@"
+exec git -c safe.directory='*' -C "${ACOPS_SRC:-$here/../src/agent-compose}" "$@"

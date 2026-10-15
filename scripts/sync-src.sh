@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Push the agent-compose source (main and every tag) to the devboard checkout
-# the reporter reads. Devboard cannot reach GitHub, so this runs from a machine
+# the ac-ops agents read. Devboard cannot reach GitHub, so this runs from a machine
 # that can, through a local mirror cache.
 #
 # Env: DEVBOARD_HOST (default devboard), REMOTE_DIR (project dir on the host),
-#      CACHE_DIR (local mirror, default ~/.cache/ac-nightly-report/agent-compose.git)
+#      CACHE_DIR (local mirror, default ~/.cache/ac-ops/agent-compose.git)
 set -euo pipefail
 
 host="${DEVBOARD_HOST:-devboard}"
-remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/ac-nightly-report}"
-cache="${CACHE_DIR:-$HOME/.cache/ac-nightly-report/agent-compose.git}"
+remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/ac-ops}"
+cache="${CACHE_DIR:-$HOME/.cache/ac-ops/agent-compose.git}"
 checkout="$remote_dir/src/agent-compose"
 
 if [ -d "$cache" ]; then

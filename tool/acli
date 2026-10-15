@@ -8,7 +8,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-cli="${ACNR_CLI:-$here/../bin/agent-compose-ro}"
+cli="${ACOPS_CLI:-$here/../bin/agent-compose-ro}"
 
 # Inside a sandbox the daemon injects its own address. The devboard daemon runs
 # without AGENT_COMPOSE_AUTH_TOKEN, but the CLI refuses to send requests without
@@ -16,4 +16,4 @@ cli="${ACNR_CLI:-$here/../bin/agent-compose-ro}"
 export AGENT_COMPOSE_URL="${AGENT_COMPOSE_URL:-${AGENT_COMPOSE_RUNTIME_BASE_URL:-http://agent-compose:7410}}"
 export AGENT_COMPOSE_API_TOKEN="${AGENT_COMPOSE_API_TOKEN:-no-auth-on-this-daemon}"
 
-exec "$cli" --timeout "${ACNR_TIMEOUT:-120s}" "$@"
+exec "$cli" --timeout "${ACOPS_TIMEOUT:-120s}" "$@"

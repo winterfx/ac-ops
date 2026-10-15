@@ -10,17 +10,19 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 host="${DEVBOARD_HOST:-devboard}"
-remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/ac-nightly-report}"
+remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/ac-ops}"
 container="${DAEMON_CONTAINER:-agent-compose}"
 # The daemon container mounts the host's /data/agent-compose at /data.
 daemon_dir="/data/${remote_dir#/data/agent-compose/}"
 
 [ -x "$root/bin/agent-compose-ro" ] || { echo "bin/agent-compose-ro is missing; run scripts/build-cli.sh" >&2; exit 1; }
 
-ssh "$host" "mkdir -p '$remote_dir/reports/data' '$remote_dir/src'"
-# src/ and reports/ live only on the host; excluding them also keeps --delete
+# Each agent's bind-mounted outputs/<agent>/ must exist before it runs.
+agents=(platform-analyst)
+ssh "$host" "mkdir -p '$remote_dir/src' $(printf "'$remote_dir/outputs/%s' " "${agents[@]}")"
+# src/ and outputs/ live only on the host; excluding them also keeps --delete
 # from removing them.
-rsync -a --delete --exclude .git --exclude /src/ --exclude /reports/ "$root/" "$host:$remote_dir/"
+rsync -a --delete --exclude .git --exclude /src/ --exclude /outputs/ "$root/" "$host:$remote_dir/"
 
 ac="docker exec -w '$daemon_dir' '$container' agent-compose --host http://127.0.0.1:7410"
 ssh "$host" "$ac config --quiet"

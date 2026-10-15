@@ -1,9 +1,9 @@
 ---
-name: ac-nightly-report
-description: 生成 agent-compose 日报：采集前一天所有项目的 Run、Sandbox、Scheduler Run，归类失败，对照 agent-compose 源码排查平台问题，统计使用情况，写出报告。
+name: health-report
+description: 生成 agent-compose 健康报告：采集一天所有项目的 Run、Sandbox、Scheduler Run，归类失败，对照 agent-compose 源码排查平台问题，统计使用情况，写出报告。
 ---
 
-# agent-compose 日报
+# agent-compose 健康报告
 
 目标：尽早发现 agent-compose **平台本身**的问题，并给 agent-compose 的开发提供有依据的方向性建议。用户 agent 自己的业务失败只做归类统计，不做深挖。
 
@@ -11,7 +11,7 @@ description: 生成 agent-compose 日报：采集前一天所有项目的 Run、
 
 | 工具 | 用途 |
 | --- | --- |
-| `python3 /workspace/tool/collect.py` | 采集前一天（Asia/Shanghai）的数据，写出摘要 JSON。`--date YYYY-MM-DD` 指定日期 |
+| `python3 /workspace/tool/collect.py` | 采集前一天（Asia/Shanghai）的数据，写出摘要 JSON。`--date YYYY-MM-DD` 指定日期（任务里给了日期就用它） |
 | `/workspace/tool/acli <子命令>` | 只读的 agent-compose CLI（chaitin-cli 的 agent-compose 命令，编译时固定为只读）。写操作在本地就会被拒绝，不会发出请求 |
 | `/workspace/tool/acsrc <git 参数>` | 只读访问 agent-compose 源码（`/workspace/src/agent-compose`，含 `origin/main` 和所有 tag） |
 
@@ -27,11 +27,11 @@ acli -p <项目> scheduler logs <scheduler-run-id>  # 必须用完整 ID（摘�
 acli llm ls                                   # LLM 连接和探测结果（daemon 版本较旧时不可用）
 ```
 
-只写两个地方：`/reports`（报告）和 `/tmp`（临时文件）。`/workspace` 是只读挂载。
+只写两个地方：`/outputs/health-report`（报告和摘要）和 `/tmp`（临时文件）。`/workspace` 是只读挂载。
 
 ## 流程
 
-1. **采集。** 运行 `python3 /workspace/tool/collect.py`，读它输出的摘要文件（`/reports/data/<日期>.json`）。如果存在前一天的摘要 `/reports/data/<前一天>.json`，也读进来用于对比。
+1. **采集。** 运行 `python3 /workspace/tool/collect.py`，读它输出的摘要文件（`/outputs/health-report/data/<日期>.json`）。如果存在前一天的摘要 `/outputs/health-report/data/<前一天>.json`，也读进来用于对比。
 2. **看采集本身。** `collection.errors` 非空、`collection.slowest_call` 超过 30 秒，说明 API 慢或出错，这本身就是平台问题，写进报告。
 3. **归类失败。** 逐个看 `error_signatures`（已按出现次数排序），结合 `failed_runs`、`failing_sandboxes`、`failed_scheduler_runs` 里的例子，给每类失败归到下表的一个类别。必要时用 `acli` 深挖一两个例子，不要逐个全查。
 
@@ -50,12 +50,12 @@ acli llm ls                                   # LLM 连接和探测结果（daem
    - 结论只能是三种之一，并写明依据：**线上版本有、上游已修复（建议升级）**；**上游也未修复（新问题）**；**不是平台问题**。拿不准就写"待确认"和缺什么证据。
 5. **使用情况。** 用 `usage_by_agent` 和 `scheduler_trigger_volume` 看：哪些 agent 最活跃、成功率、耗时、provider/模型/driver/镜像的分布、调度频率是否异常（例如每分钟触发一次的 interval）。只做统计。
 6. **对比。** 有前一天的摘要时，指出新出现的错误类别、明显变多或变少的类别、新出现的 agent。
-7. **写报告。** 按下面的模板写到 `/reports/<日期>.md`，并把同样的内容作为最终回答输出。
+7. **写报告。** 按下面的模板写到 `/outputs/health-report/<日期>.md`，并把同样的内容作为最终回答输出。
 
 ## 报告模板
 
 ```markdown
-# agent-compose 日报 <日期>
+# agent-compose 健康报告 <日期>
 
 > 窗口 <start> ~ <end>（Asia/Shanghai），daemon <版本>，已运行 <天数> 天
 

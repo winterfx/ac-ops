@@ -1,5 +1,5 @@
 // Command agent-compose-ro is a read-only build of chaitin-cli's agent-compose
-// command for the nightly reporter.
+// command for the ac-ops agents.
 //
 // Only the agent-compose product is compiled in, which keeps the binary small,
 // and dry-run is always on: every write command (run, stop, rm, exec, trigger,
