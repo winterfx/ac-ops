@@ -27,11 +27,17 @@ acli -p <项目> scheduler logs <scheduler-run-id>  # 必须用完整 ID（摘�
 acli llm ls                                   # LLM 连接和探测结果（daemon 版本较旧时不可用）
 ```
 
-只写两个地方：`/outputs/health-report`（报告和摘要）和 `/tmp`（临时文件）。`/workspace` 是只读挂载。
+只往 `/tmp` 写文件（摘要默认在 `/tmp/platform-ops/health-report/`）。`/workspace` 是只读挂载，也没有任何持久目录：**报告就是这次运行的最终回答**，daemon 会把它保存在 Run 记录里，UI 里也能看到。
 
 ## 流程
 
-1. **采集。** 运行 `python3 /workspace/tool/collect.py`，读它输出的摘要文件（`/outputs/health-report/data/<日期>.json`）。如果存在前一天的摘要 `/outputs/health-report/data/<前一天>.json`，也读进来用于对比。
+1. **采集。** 运行 `python3 /workspace/tool/collect.py`，读它输出的摘要文件（路径在输出的第一行）。
+   **找前一天的报告用于对比：** 前一天的报告是本 agent 前一次成功运行的最终回答。
+   ```bash
+   acli --json -p platform-ops run ls --agent platform-analyst --status succeeded --limit 10   # 最新的在前
+   acli --json -p platform-ops inspect run <run-id>                                           # .output 就是报告正文
+   ```
+   取输出第一行标题是"agent-compose 健康报告 <前一天日期>"的那一次（不是就往前找）；找不到就在报告里写"无前一天报告可对比"。
 2. **看采集本身。** `collection.errors` 非空、`collection.slowest_call` 超过 30 秒，说明 API 慢或出错，这本身就是平台问题，写进报告。
 3. **归类失败。** 逐个看 `error_signatures`（已按出现次数排序），结合 `failed_runs`、`failing_sandboxes`、`failed_scheduler_runs` 里的例子，给每类失败归到下表的一个类别。必要时用 `acli` 深挖一两个例子，不要逐个全查。
 
@@ -49,8 +55,8 @@ acli llm ls                                   # LLM 连接和探测结果（daem
    - 判断上游是否已修复：`acsrc log --oneline <版本tag>..origin/main -- <相关目录>`，以及在 `origin/main` 上再 grep 一次同一段错误信息。找到修复提交时写出提交号和标题。
    - 结论只能是三种之一，并写明依据：**线上版本有、上游已修复（建议升级）**；**上游也未修复（新问题）**；**不是平台问题**。拿不准就写"待确认"和缺什么证据。
 5. **使用情况。** 用 `usage_by_agent` 和 `scheduler_trigger_volume` 看：哪些 agent 最活跃、成功率、耗时、provider/模型/driver/镜像的分布、调度频率是否异常（例如每分钟触发一次的 interval）。只做统计。
-6. **对比。** 有前一天的摘要时，指出新出现的错误类别、明显变多或变少的类别、新出现的 agent。
-7. **写报告。** 按下面的模板写到 `/outputs/health-report/<日期>.md`，并把同样的内容作为最终回答输出。
+6. **对比。** 有前一天的报告时，对比两份报告里的数字和"失败归类"，指出新出现的错误类别、明显变多或变少的类别、新出现的 agent。
+7. **写报告。** 按下面的模板写，**作为最终回答输出**（不要写到文件里，也不要在报告前后加其他内容，这样下一次运行才能直接读到它）。
 
 ## 报告模板
 
@@ -83,7 +89,7 @@ acli llm ls                                   # LLM 连接和探测结果（daem
 <1~3 条，每条都要能对应到上面的证据>
 
 ## 数据说明
-<采集耗时、读取的 sandbox history 数量、采集错误、本报告的局限>
+<采集耗时、读取的 sandbox history 数量、采集错误；源码同步到的 origin/main 提交和日期（`acsrc log -1 --format="%h %cd" --date=short origin/main`），"上游是否已修复"的结论只截至这一天；本报告的局限>
 ```
 
 ## 规则

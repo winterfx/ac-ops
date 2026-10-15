@@ -6,7 +6,7 @@ The `platform-ops` agent-compose project: agents, deployed on agent-compose itse
 
 | Agent | Role | Triggers | Skills | Writes to |
 | --- | --- | --- | --- | --- |
-| `platform-analyst` | Analyzes platform health and usage | `nightly-report`: 00:00 Asia/Shanghai | `health-report` | `outputs/platform-analyst/` |
+| `platform-analyst` | Analyzes platform health and usage | `nightly-report`: 00:00 Asia/Shanghai | `health-report` | its final answer (Run history) |
 
 ### `health-report` skill
 
@@ -31,15 +31,16 @@ The details are in `skills/health-report/SKILL.md`.
 | `tool/acsrc` | Read-only git access to the agent-compose source |
 | `cli/` | Source of `bin/agent-compose-ro`: chaitin-cli's agent-compose command alone (~12 MB), with dry-run fixed on, so every write command is refused before a request is sent. The chaitin-cli version is pinned in `cli/go.mod` |
 | `scripts/` | Build, sync, and deploy helpers |
-| `bin/`, `src/`, `outputs/` | Not in git: the built CLI, the synced agent-compose source, and each agent's output |
+| `bin/`, `src/` | Not in git: the built CLI and the synced agent-compose source |
 
-Inside a sandbox, the whole project is mounted read-only at `/workspace`, and is shared by all agents. Each agent can write only to its own `outputs/<agent>/` directory, mounted at `/outputs`.
+Inside a sandbox, the whole project is mounted read-only at `/workspace`, and is shared by all agents. Agents mount nothing writable and use `/tmp` for scratch files.
+
+A report is the run's final answer. The daemon keeps it in the Run history, and the UI shows it. The next report finds the previous one there, through `acli run ls` and `acli inspect run`. Writable mounts are not an option on devboard anyway: with `DOCKER_HOST_SANDBOX_ROOT` set, the daemon rejects every bind or `local` volume source outside `SANDBOX_ROOT`. The fix is chaitin/agent-compose#784; once a daemon with it is deployed, a `local` volume could keep report files as well.
 
 To add an agent:
 
-1. Define it in `agent-compose.yml`, with its own `outputs/<agent>` bind.
-2. Add it to `agents=(...)` in `scripts/deploy.sh`.
-3. Put any new skill under `skills/`.
+1. Define it in `agent-compose.yml`.
+2. Put any new skill under `skills/`.
 
 ## Deploying to devboard
 
@@ -75,7 +76,7 @@ Run `scripts/sync-src.sh` again whenever the agents should see newer agent-compo
   ```bash
   GOOS=darwin GOARCH=arm64 OUT=/tmp/agent-compose-ro scripts/build-cli.sh
   ACOPS_CLI=/tmp/agent-compose-ro AGENT_COMPOSE_URL=http://127.0.0.1:17410 \
-  ACOPS_OUTPUTS=/tmp/ac-ops python3 tool/collect.py --date 2026-10-14
+  python3 tool/collect.py --date 2026-10-14   # digest under /tmp/platform-ops/
   ```
 
 ## Safety
