@@ -1,4 +1,4 @@
-# ac-ops: agents that watch the agent-compose platform they run on.
+# platform-ops: agents that watch the agent-compose platform they run on.
 #
 # Agents:
 #   platform-analyst  Analyzes platform health and usage. The nightly-report
@@ -12,7 +12,9 @@
 # The project must live on the daemon host: file sources and mounts are read
 # from the daemon's filesystem. See README.md and scripts/deploy.sh.
 
-name: ac-ops
+# Named to sort after the main project: the agent-compose UI opens the
+# alphabetically first project by default.
+name: platform-ops
 
 agents:
   platform-analyst:
@@ -27,7 +29,7 @@ agents:
       docker: {}
 
     env:
-      ACOPS_SELF_PROJECT: ac-ops
+      ACOPS_SELF_PROJECT: platform-ops
 
     workspace:
       provider: file

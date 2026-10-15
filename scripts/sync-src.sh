@@ -8,7 +8,7 @@
 set -euo pipefail
 
 host="${DEVBOARD_HOST:-devboard}"
-remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/ac-ops}"
+remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/platform-ops}"
 cache="${CACHE_DIR:-$HOME/.cache/ac-ops/agent-compose.git}"
 checkout="$remote_dir/src/agent-compose"
 

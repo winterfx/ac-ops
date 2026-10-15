@@ -1,6 +1,6 @@
 # ac-ops
 
-Agents, deployed on agent-compose itself, that watch the agent-compose platform they run on. The aim is to catch **platform** problems early and give agent-compose development concrete, evidence-backed direction.
+The `platform-ops` agent-compose project: agents, deployed on agent-compose itself, that watch the agent-compose platform they run on. The aim is to catch **platform** problems early and give agent-compose development concrete, evidence-backed direction.
 
 ## Agents
 
@@ -24,7 +24,7 @@ The details are in `skills/health-report/SKILL.md`.
 
 | Path | What |
 | --- | --- |
-| `agent-compose.yml` | Project `ac-ops`: agents, their skills, and triggers |
+| `agent-compose.yml` | Project `platform-ops`: agents, their skills, and triggers. The name sorts after `devboard-ai` on purpose, because the agent-compose UI opens the alphabetically first project by default |
 | `skills/` | Skills, organized by job, so agents can share them |
 | `tool/collect.py` | Health-report data collector (Python stdlib only) |
 | `tool/acli` | Wrapper around `bin/agent-compose-ro` that points it at the daemon the sandbox runs on |
@@ -43,11 +43,11 @@ To add an agent:
 
 ## Deploying to devboard
 
-Devboard cannot reach GitHub, and the daemon reads file sources from its own filesystem. So the project is copied to the host under the daemon's data mount: `/data/agent-compose/projects/ac-ops` on the host, which is `/data/projects/ac-ops` inside the daemon.
+Devboard cannot reach GitHub, and the daemon reads file sources from its own filesystem. So the project is copied to the host under the daemon's data mount: `/data/agent-compose/projects/platform-ops` on the host, which is `/data/projects/platform-ops` inside the daemon.
 
 ```bash
 # 0. Once: create the host directory. /data/agent-compose is root-owned.
-ssh devboard 'sudo mkdir -p /data/agent-compose/projects/ac-ops && sudo chown "$USER" /data/agent-compose/projects/ac-ops'
+ssh devboard 'sudo mkdir -p /data/agent-compose/projects/platform-ops && sudo chown "$USER" /data/agent-compose/projects/platform-ops'
 
 # 1. Build bin/agent-compose-ro (linux/amd64).
 scripts/build-cli.sh

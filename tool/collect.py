@@ -215,7 +215,7 @@ def main():
     parser.add_argument("--date", help="local calendar day (Asia/Shanghai), default: yesterday")
     parser.add_argument("--since", help="relative window ending now, e.g. 6h or 2d")
     parser.add_argument("--out", help="digest path, default: $ACOPS_OUTPUTS/health-report/data/<date>.json")
-    parser.add_argument("--exclude-project", action="append", default=[os.environ.get("ACOPS_SELF_PROJECT", "ac-ops")], help="project to leave out (repeatable)")
+    parser.add_argument("--exclude-project", action="append", default=[os.environ.get("ACOPS_SELF_PROJECT", "platform-ops")], help="project to leave out (repeatable)")
     args = parser.parse_args()
 
     start, end, label = window_from_args(args)

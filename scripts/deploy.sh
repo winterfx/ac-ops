@@ -10,7 +10,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 host="${DEVBOARD_HOST:-devboard}"
-remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/ac-ops}"
+remote_dir="${REMOTE_DIR:-/data/agent-compose/projects/platform-ops}"
 container="${DAEMON_CONTAINER:-agent-compose}"
 # The daemon container mounts the host's /data/agent-compose at /data.
 daemon_dir="/data/${remote_dir#/data/agent-compose/}"
