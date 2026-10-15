@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Read-only agent-compose CLI for the daemon this sandbox runs on.
+#
+# Usage: acli <agent-compose subcommand...>, e.g. `acli run ls --all-projects`.
+# bin/agent-compose-ro is chaitin-cli's agent-compose command built with dry-run
+# fixed on (see cli/main.go): every write command (run, stop, rm, exec, ...) is
+# refused before a request is sent, so this wrapper cannot change the daemon.
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+cli="${ACNR_CLI:-$here/../bin/agent-compose-ro}"
+
+# Inside a sandbox the daemon injects its own address. The devboard daemon runs
+# without AGENT_COMPOSE_AUTH_TOKEN, but the CLI refuses to send requests without
+# a token, so a placeholder stands in.
+export AGENT_COMPOSE_URL="${AGENT_COMPOSE_URL:-${AGENT_COMPOSE_RUNTIME_BASE_URL:-http://agent-compose:7410}}"
+export AGENT_COMPOSE_API_TOKEN="${AGENT_COMPOSE_API_TOKEN:-no-auth-on-this-daemon}"
+
+exec "$cli" --timeout "${ACNR_TIMEOUT:-120s}" "$@"
