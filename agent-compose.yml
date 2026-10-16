@@ -4,9 +4,10 @@
 #   platform-analyst  Analyzes platform health and usage. The nightly-report
 #                     trigger writes the previous day's health report.
 #
-# Shared by every agent (mounted read-only at /workspace): tool/ (read-only
-# CLI wrapper, source access, collector), bin/agent-compose-ro, and
-# src/agent-compose (synced by scripts/sync-src.sh).
+# Shared by every agent: the image ac-ops-agent:local (image/Dockerfile, built
+# on the host by scripts/build-image.sh), which carries the read-only CLI; and,
+# mounted read-only at /workspace, tool/ (CLI wrapper, source access, collector)
+# and src/agent-compose (synced by scripts/sync-src.sh).
 #
 # Agents mount nothing writable: a report is the run's final answer, kept in
 # the daemon's Run history and shown in the UI, and the next report reads the
@@ -28,7 +29,8 @@ agents:
 
     provider: codex
     # model omitted: the daemon's default model.
-    image: portus.in.chaitin.net/dev/agent-compose-guest:latest
+    # Built on the host by scripts/build-image.sh; never pulled.
+    image: ac-ops-agent:local
     # Docker is required: workspace mounts and bind volumes are Docker-only.
     driver:
       docker: {}

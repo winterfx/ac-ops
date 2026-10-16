@@ -2,8 +2,12 @@ module github.com/winterfx/ac-ops/cli
 
 go 1.25.0
 
+// chaitin-cli is pinned to a commit on its main branch. Its vYYMM.x.y tags are
+// invisible to Go (a major version above 1 needs a /vN module path), so a
+// pseudo-version is the only way to pin it, released or not. To bump:
+//   go get github.com/chaitin/chaitin-cli@<commit>
 require (
-	github.com/chaitin/chaitin-cli v0.0.0
+	github.com/chaitin/chaitin-cli v0.0.0-20261015100223-44e257dc3cbc
 	github.com/spf13/cobra v1.9.1
 )
 
@@ -18,7 +22,3 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// chaitin/chaitin-cli#88 (run diagnostics, fast ps) is not released yet; build
-// from its commit on the fork. Switch to an upstream version once it ships.
-replace github.com/chaitin/chaitin-cli => github.com/winterfx/chaitin-cli v0.0.0-20261015082531-c4aaf38be292
