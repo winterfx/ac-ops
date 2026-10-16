@@ -62,8 +62,7 @@ agents:
       报告不引用任何 prompt 或对话原文，不包含凭据。
 
     scheduler:
-      # Off until a manual run has been checked; then set to true and redeploy.
-      enabled: false
+      enabled: true
       concurrency_policy: skip
       run_timeout: 90m
       triggers:
