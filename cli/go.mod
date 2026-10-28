@@ -7,7 +7,7 @@ go 1.25.0
 // pseudo-version is the only way to pin it, released or not. To bump:
 //   go get github.com/chaitin/chaitin-cli@<commit>
 require (
-	github.com/chaitin/chaitin-cli v0.0.0-20261015100223-44e257dc3cbc
+	github.com/chaitin/chaitin-cli v0.0.0-20261028032436-e4bdacb24a4d
 	github.com/spf13/cobra v1.9.1
 )
 
@@ -16,9 +16,12 @@ require (
 	github.com/chaitin/agent-compose/proto v0.1.12 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
