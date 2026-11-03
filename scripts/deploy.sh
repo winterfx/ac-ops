@@ -18,7 +18,8 @@ daemon_dir="/data/${remote_dir#/data/agent-compose/}"
 ssh "$host" "mkdir -p '$remote_dir/src'"
 # src/ lives only on the host (scripts/sync-src.sh); excluding it also keeps
 # --delete from removing it. bin/ ships in the image, not the project.
-rsync -a --delete --exclude .git --exclude /src/ --exclude /bin/ "$root/" "$host:$remote_dir/"
+# secrets/ is written once by scripts/set-notify-secret.sh and is never in git.
+rsync -a --delete --exclude .git --exclude /src/ --exclude /bin/ --exclude /secrets/ "$root/" "$host:$remote_dir/"
 
 ac="docker exec -w '$daemon_dir' '$container' agent-compose --host http://127.0.0.1:7410"
 ssh "$host" "$ac config --quiet"

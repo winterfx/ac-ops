@@ -6,7 +6,7 @@ The `platform-ops` agent-compose project: agents, deployed on agent-compose itse
 
 | Agent | Role | Triggers | Skills | Writes to |
 | --- | --- | --- | --- | --- |
-| `platform-analyst` | Analyzes platform health and usage | `nightly-report`: 00:00 Asia/Shanghai | `health-report` | its final answer (Run history) |
+| `platform-analyst` | Analyzes platform health and usage | `nightly-report`: 00:00 Asia/Shanghai | `health-report` | its final answer (Run history) and the DingTalk group |
 
 ### `health-report` skill
 
@@ -16,7 +16,7 @@ On the `nightly-report` trigger, or when asked by hand, `platform-analyst` does 
 2. Classifies each failure as one of: platform bug, LLM upstream, image/runtime mismatch, user script/config, or user cancel.
 3. For suspected platform bugs, locates the code at the deployed version's tag, then checks `origin/main` to see whether the bug is already fixed upstream.
 4. Summarizes usage per agent: activity, success rate, provider/model/driver/image, and scheduler frequency.
-5. Writes `health-report/<date>.md`. The same text is the run's final answer, so it is visible in the agent-compose UI.
+5. Answers with the report. The text is the run's final answer, so it stays in Run history and is visible in the agent-compose UI. The `nightly-report` trigger also sends it to the DingTalk group through `tool/notify.py`.
 
 The details are in `skills/health-report/SKILL.md`.
 
@@ -27,6 +27,7 @@ The details are in `skills/health-report/SKILL.md`.
 | `agent-compose.yml` | Project `platform-ops`: agents, their skills, and triggers. The name sorts after `devboard-ai` on purpose, because the agent-compose UI opens the alphabetically first project by default |
 | `skills/` | Skills, organized by job, so agents can share them |
 | `tool/collect.py` | Health-report data collector (Python stdlib only) |
+| `tool/notify.py` | Sends a report to the DingTalk robot (Python stdlib only): tables become lists and long reports are split |
 | `image/Dockerfile` | The agents' image: the guest image (pinned by digest) plus `agent-compose-ro` |
 | `tool/acli` | Wrapper around `agent-compose-ro` that points it at the daemon the sandbox runs on |
 | `tool/acsrc` | Read-only git access to the agent-compose source |
@@ -64,6 +65,28 @@ scripts/deploy.sh
 
 `scripts/deploy.sh` builds the image with `scripts/build-image.sh`, which streams `image/Dockerfile` and `bin/agent-compose-ro` to the host's Docker and tags the result `ac-ops-agent:local`. The daemon uses that local image without pulling, so no registry is involved. To update only the CLI, run `scripts/build-cli.sh` and `scripts/build-image.sh`; new runs pick up the new image.
 
+### DingTalk notification
+
+The nightly report is sent to the group whose robot webhook lives on the host, never in git:
+
+```bash
+scripts/set-notify-secret.sh          # paste the webhook URL; input is hidden
+```
+
+This writes `/data/agent-compose/projects/platform-ops/secrets/dingtalk-webhook` (mode 0600, owned by the SSH user), which the sandbox sees read-only at `/workspace/secrets/dingtalk-webhook`. `scripts/deploy.sh` excludes `secrets/` from rsync, so redeploying keeps it.
+
+If the robot uses 加签, store the signing secret as well; `tool/notify.py` picks it up automatically:
+
+```bash
+scripts/set-notify-secret.sh dingtalk-secret
+```
+
+If it uses a keyword, `DINGTALK_KEYWORD` in `agent-compose.yml` holds it (`每日报告` today); `tool/notify.py` puts it in every message, including each part of a split report. If it uses an IP allowlist, add the devboard host's egress address. The send is triggered only by the `nightly-report` prompt ("并发送到钉钉"); a manual run sends only when its prompt asks for it. To inspect the payload without sending:
+
+```bash
+DINGTALK_KEYWORD=每日报告 python3 tool/notify.py --file /tmp/report.md --dry-run
+```
+
 To move chaitin-cli forward, `cd cli && go get github.com/chaitin/chaitin-cli@<commit>`. Its `vYYMM.x.y` tags are not usable Go versions, so it is always pinned by commit. To move the guest image forward, change the digest in `image/Dockerfile`.
 
 Run `scripts/sync-src.sh` again whenever the agents should see newer agent-compose commits. A GitLab mirror of agent-compose that devboard can reach would remove this step.
@@ -87,6 +110,7 @@ Run `scripts/sync-src.sh` again whenever the agents should see newer agent-compo
 ## Safety
 
 - **Read-only.** All queries go through `agent-compose-ro`. It is built with dry-run fixed on, so the following are refused before anything is sent: run, stop, rm, resume, exec, trigger, invoke, and auth login/logout. No flag turns this off.
+- **One outbound write.** Only when the task asks for it, `tool/notify.py` POSTs the report to the DingTalk robot. The webhook and signing secret are host-side files under `secrets/` (excluded from git and from deploys); the script never prints them, and reports never contain them.
 - **Minimal mounts.** The project mount is read-only. The daemon's data directory and `data.db` are **not** mounted, because they hold LLM tokens and webhook secrets.
 - **Untrusted content.** Other agents' prompts, outputs, and logs may carry text from external webhooks. The agents treat them as evidence only and never follow instructions in them.
 - **Privacy.** Reports give aggregates and short IDs, and do not quote prompts or conversations. `collect.py` redacts common credential patterns before anything reaches the digest.
