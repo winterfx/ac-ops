@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Push the agent-compose source (main and every tag) to the devboard checkout
-# the ac-ops agents read. Devboard cannot reach GitHub, so this runs from a machine
-# that can, through a local mirror cache.
+# used for manual analysis. The nightly report no longer reads this checkout:
+# source-sync fills the ac-src project volume at 00:00 instead. Devboard cannot
+# reach GitHub, so this runs from a machine that can, through a local mirror
+# cache.
 #
 # Env: DEVBOARD_HOST (default devboard), REMOTE_DIR (project dir on the host),
 #      CACHE_DIR (local mirror, default ~/.cache/ac-ops/agent-compose.git)

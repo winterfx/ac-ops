@@ -9,7 +9,7 @@
 #
 # The binary is copied in, not compiled here: devboard cannot reach GitHub or
 # the Go module proxy.
-ARG BASE=portus.in.chaitin.net/dev/agent-compose-guest@sha256:53c29c05784fb7da06dfbab82d57cbbd3f2523d59238ff98eb3a82622835df54
+ARG BASE=portus.in.chaitin.net/dev/agent-compose-guest@sha256:26321673a3eebcf05d3ea1c1f084478d941b3d85fb43158a9ef06871ef24f822
 FROM ${BASE}
 ARG CLI_VERSION=unknown
 LABEL org.opencontainers.image.title="ac-ops agent" \
