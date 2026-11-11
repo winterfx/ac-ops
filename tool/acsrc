@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Read-only git access to the agent-compose source synced into this project.
+# Read-only git access to the agent-compose checkout.
+#
+# The nightly source sync (agent source-sync) keeps it in the project volume
+# mounted at /src; ACOPS_SRC points there. The fallback path is the optional
+# host-side checkout written by scripts/sync-src.sh.
 #
 # Usage: acsrc <git args...>, e.g.
 #   acsrc grep -n "wire api mismatch" llm-facade-2609.4.5 -- pkg
 #   acsrc log --oneline llm-facade-2609.4.5..origin/main -- pkg/agentcompose/proxy
 #
-# The checkout is a read-only mount owned by another uid, so git's
-# dubious-ownership check is relaxed for this one command.
+# The volume or mount may be owned by another uid, so git's dubious-ownership
+# check is relaxed for this one command.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Store a notification secret on the devboard host, outside git.
+# Store a host-side secret on the devboard host, outside git.
 #
 # The value is read from stdin, never from an argument, so it does not land in
 # shell history. It is written to <project>/secrets/<name> on the host, which
@@ -9,6 +9,7 @@
 # Usage:
 #   scripts/set-notify-secret.sh                  # prompts for the webhook URL
 #   scripts/set-notify-secret.sh dingtalk-secret  # a bot signing secret (加签)
+#   scripts/set-notify-secret.sh http-proxy       # proxy used by source-sync
 #   scripts/set-notify-secret.sh < /path/to/file  # read the value from a file
 #
 # Env: DEVBOARD_HOST (default devboard), REMOTE_DIR (default
@@ -24,11 +25,11 @@ case "$name" in
 esac
 
 if [ -t 0 ]; then
-  if [ "$name" = "dingtalk-webhook" ]; then
-    printf 'Paste the DingTalk webhook URL, then Enter (input is hidden):\n' >&2
-  else
-    printf 'Paste the value for %s, then Enter (input is hidden):\n' "$name" >&2
-  fi
+  case "$name" in
+    dingtalk-webhook) printf 'Paste the DingTalk webhook URL, then Enter (input is hidden):\n' >&2 ;;
+    http-proxy)       printf 'Paste the HTTP proxy URL, then Enter (input is hidden):\n' >&2 ;;
+    *)                printf 'Paste the value for %s, then Enter (input is hidden):\n' "$name" >&2 ;;
+  esac
   if ! IFS= read -rs value; then
     echo >&2
     echo "no input" >&2

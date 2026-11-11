@@ -13,7 +13,7 @@ description: 生成 agent-compose 健康报告：采集一天所有项目的 Run
 | --- | --- |
 | `python3 /workspace/tool/collect.py` | 采集前一天（Asia/Shanghai）的数据，写出摘要 JSON。`--date YYYY-MM-DD` 指定日期（任务里给了日期就用它） |
 | `/workspace/tool/acli <子命令>` | 只读的 agent-compose CLI（chaitin-cli 的 agent-compose 命令，编译时固定为只读）。写操作在本地就会被拒绝，不会发出请求 |
-| `/workspace/tool/acsrc <git 参数>` | 只读访问 agent-compose 源码（`/workspace/src/agent-compose`，含 `origin/main` 和所有 tag） |
+| `/workspace/tool/acsrc <git 参数>` | 只读访问 agent-compose 源码（`/src/agent-compose`，由 `source-sync` 写入；含 `origin/main` 和所有 tag） |
 | `python3 /workspace/tool/notify.py` | 把报告发送到钉钉群机器人。webhook 从 `/workspace/secrets/dingtalk-webhook` 读取，脚本不会打印它。只在任务要求发送时使用 |
 
 `acli` 常用命令（加 `--json` 得到结构化输出；`-p <项目>` 指定项目）：
@@ -52,6 +52,7 @@ acli llm ls                                   # LLM 连接和探测结果（daem
    | 用户取消 | 人为停止 | `context canceled` |
 
 4. **排查平台问题（只针对"平台 bug"和拿不准的类别）。**
+   - 先确认源码可用：`acsrc log -1 --oneline origin/main`。失败说明 `source-sync` 没同步成功（prompt 里的 `<trigger-event>` 块会有 `ok:false` 和 `error`）；这时跳过源码定位，在"数据说明"里写明源码不可用及原因，不要编造代码位置。
    - 线上版本就是 `acli status` 里的 Version（例如 `llm-facade-2609.4.5`），源码里有同名 tag。
    - 定位代码：`acsrc grep -n "<错误信息里的关键短语>" <版本tag> -- pkg cmd`
    - 判断上游是否已修复：`acsrc log --oneline <版本tag>..origin/main -- <相关目录>`，以及在 `origin/main` 上再 grep 一次同一段错误信息。找到修复提交时写出提交号和标题。
@@ -97,7 +98,7 @@ acli llm ls                                   # LLM 连接和探测结果（daem
 <1~3 条，每条都要能对应到上面的证据>
 
 ## 数据说明
-<采集耗时、读取的 sandbox history 数量和因上限跳过的数量（`totals.sandbox_histories_skipped`，非零时要写明这些 sandbox 的失败没有统计在内）、采集错误；源码同步到的 origin/main 提交和日期（`acsrc log -1 --format="%h %cd" --date=short origin/main`），"上游是否已修复"的结论只截至这一天；本报告的局限>
+<采集耗时、读取的 sandbox history 数量和因上限跳过的数量（`totals.sandbox_histories_skipped`，非零时要写明这些 sandbox 的失败没有统计在内）、采集错误；prompt 的 `<trigger-event>` 块里 `source-sync` 的 `ok`/`commit`（失败时写 `error`），"上游是否已修复"的结论只截至这个 commit；本报告的局限>
 ```
 
 ## 规则

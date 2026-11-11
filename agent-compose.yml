@@ -1,19 +1,26 @@
 # platform-ops: agents that watch the agent-compose platform they run on.
 #
 # Agents:
-#   platform-analyst  Analyzes platform health and usage. The nightly-report
-#                     trigger writes the previous day's health report.
+#   source-sync       Pulls the agent-compose source into the ac-src volume, then
+#                     publishes external.source-synced. No model call.
+#   platform-analyst  Analyzes platform health and usage. Its nightly-report
+#                     trigger wakes on external.source-synced and writes the
+#                     previous day's health report.
 #
 # Shared by every agent: the image ac-ops-agent:local (image/Dockerfile, built
 # on the host by scripts/build-image.sh), which carries the read-only CLI; and,
-# mounted read-only at /workspace, tool/ (CLI wrapper, source access, collector)
-# and src/agent-compose (synced by scripts/sync-src.sh).
+# mounted read-only at /workspace, tool/ (CLI wrapper, source access, collector).
 #
-# Agents mount nothing writable: a report is the run's final answer, kept in
-# the daemon's Run history and shown in the UI, and the next report reads the
-# previous one from there. Volumes would not mount anyway: with
-# DOCKER_HOST_SANDBOX_ROOT set, the daemon rejects every bind or local volume
-# source outside SANDBOX_ROOT (fix: chaitin/agent-compose#784).
+# The source lives in the project volume ac-src, mounted at /src: writable for
+# source-sync, read-only for platform-analyst. The proxy URL exists only in the
+# host's secrets/http-proxy (excluded from git and from deploy), read by the
+# sync command at run time.
+#
+# A report is the run's final answer, kept in the daemon's Run history and
+# shown in the UI; the next report reads the previous one from there. Bind
+# mounts outside SANDBOX_ROOT are rejected (with DOCKER_HOST_SANDBOX_ROOT set),
+# so a project volume is the way to keep files between runs
+# (chaitin/agent-compose#784).
 #
 # The project must live on the daemon host: file sources and mounts are read
 # from the daemon's filesystem. See README.md and scripts/deploy.sh.
@@ -22,13 +29,80 @@
 # alphabetically first project by default.
 name: platform-ops
 
+volumes:
+  # Keeps the agent-compose checkout between runs. The volume lives under the
+  # daemon's DATA_ROOT, so it survives redeploys; `volume prune` removes it.
+  ac-src: {}
+
 agents:
+  source-sync:
+    display_name: Source Sync
+    description: 同步 agent-compose 源码到共享卷，完成后发布 external.source-synced 事件
+
+    provider: codex
+    model: deepseek-v4-pro
+    image: ac-ops-agent:local
+    driver:
+      docker: {}
+
+    # Read-only project mount so the sync command can read secrets/http-proxy.
+    workspace:
+      provider: file
+      path: .
+      mode: mount
+      read_only: true
+      target: .
+
+    volumes:
+      - ac-src:/src:rw
+
+    # A script scheduler: the sync is a fixed shell command, not an agent run.
+    # The proxy URL is read from the host-only secret at run time, so it never
+    # appears in this file.
+    scheduler:
+      enabled: true
+      concurrency_policy: skip
+      run_timeout: 15m
+      script: |
+        scheduler.cron("nightly-sync", "0 0 * * *", function () {
+          const sync = scheduler.shell(
+            'set -eu; ' +
+            'p="$(cat /workspace/secrets/http-proxy)"; ' +
+            'export https_proxy="$p" http_proxy="$p" HTTPS_PROXY="$p" HTTP_PROXY="$p"; ' +
+            'd=/src/agent-compose; ' +
+            '[ -d "$d/.git" ] || git clone https://github.com/chaitin/agent-compose.git "$d"; ' +
+            'git -C "$d" fetch --prune --tags origin "+refs/heads/main:refs/remotes/origin/main"; ' +
+            'git -C "$d" rev-parse origin/main',
+            { timeoutMs: 600000, sandboxPolicy: "new" }
+          );
+
+          const payload = {
+            ok: sync.success,
+            commit: sync.success ? sync.stdout.trim() : "",
+            syncedAt: new Date().toISOString(),
+          };
+          if (!sync.success) {
+            payload.error = (sync.stderr || sync.output || "").slice(0, 2000);
+          }
+
+          // Same-project event triggers wake on this. Publishing even on failure
+          // keeps the nightly report going; it states in 数据说明 that the source
+          // could not be synced.
+          scheduler.event.publish("external.source-synced", payload);
+          return payload;
+        }, { timezone: "Asia/Shanghai" });
+
   platform-analyst:
     display_name: Platform Analyst
     description: 分析 agent-compose 平台的健康状况和使用情况，发现平台问题并给出开发建议
 
     provider: codex
-    # model omitted: the daemon's default model.
+    model: deepseek-v4-pro
+    # Pinned instead of the daemon default: the default (feature/gpt-5.6-terra)
+    # stopped existing upstream on 2026-10-30 and the gateway answers 404
+    # 模型不存在或无权访问, which failed the nightly run in ~5s. deepseek-v4-pro
+    # is served by the same daemon connection and is the model the 2026-11-02
+    # run succeeded with.
     # Built on the host by scripts/build-image.sh; never pulled.
     image: ac-ops-agent:local
     # Docker is required: workspace mounts and bind volumes are Docker-only.
@@ -37,11 +111,17 @@ agents:
 
     env:
       ACOPS_SELF_PROJECT: platform-ops
+      # The shared checkout written by source-sync; tool/acsrc defaults to it.
+      ACOPS_SRC: /src/agent-compose
       # Host-only file, excluded from git and from scripts/deploy.sh's rsync.
       # Written once by scripts/set-notify-secret.sh.
       DINGTALK_WEBHOOK_FILE: /workspace/secrets/dingtalk-webhook
       # The robot's 自定义关键词; every message must contain it.
       DINGTALK_KEYWORD: 每日报告
+
+    volumes:
+      # source-sync mounts the same volume writable.
+      - ac-src:/src:ro
 
     workspace:
       provider: file
@@ -59,7 +139,8 @@ agents:
       你是 agent-compose 平台的分析员，负责发现平台本身的问题，并给 agent-compose 的开发提供有依据的建议。
       收到生成健康报告的任务时，先读 health-report skill，严格按其中的流程、模板和规则执行。
 
-      你只读：所有查询都通过 /workspace/tool/acli（写操作会被拒绝），源码通过 /workspace/tool/acsrc。
+      你只读：所有查询都通过 /workspace/tool/acli（写操作会被拒绝），源码通过 /workspace/tool/acsrc
+      （默认读取 /src/agent-compose，由 source-sync 同步）。
       只往 /tmp 写文件。报告就是你的最终回答。任务要求发送钉钉时，只用 /workspace/tool/notify.py：
       不要自己读 /workspace/secrets/，也不要把其中的内容写进报告或输出。
 
@@ -71,8 +152,12 @@ agents:
       enabled: true
       concurrency_policy: skip
       run_timeout: 90m
+      # Woken by source-sync instead of a cron: the report starts only after the
+      # source checkout is refreshed. The event payload (ok, commit, error) is
+      # appended to the prompt as a <trigger-event> block.
       triggers:
         - name: nightly-report
-          cron: "0 0 * * *"
-          timezone: Asia/Shanghai
+          event:
+            topic: external.source-synced
+          include_event: true
           prompt: 生成前一天（Asia/Shanghai）的 agent-compose 健康报告，并发送到钉钉。
